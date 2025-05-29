@@ -1,0 +1,87 @@
+pipeline {
+    agent any
+    
+    environment {
+        POETRY_VERSION = '1.8.2'
+    }
+    
+    stages {
+        stage('Setup') {
+            steps {
+                sh 'pip install poetry==$POETRY_VERSION'
+                sh 'poetry install'
+            }
+        }
+        
+        stage('API Contract Tests') {
+            steps {
+                sh 'poetry run pytest tests/api_docs/ -v --tb=short --junitxml=reports/api-contracts.xml'
+            }
+            post {
+                always {
+                    junit 'reports/api-contracts.xml'
+                }
+            }
+        }
+        
+        stage('Security Tests') {
+            steps {
+                sh 'poetry run pytest tests/security/ -v --tb=short --junitxml=reports/security.xml'
+            }
+            post {
+                always {
+                    junit 'reports/security.xml'
+                }
+            }
+        }
+        
+        stage('Performance Tests') {
+            steps {
+                sh 'poetry run pytest tests/performance/ -v --tb=short --junitxml=reports/performance.xml'
+            }
+            post {
+                always {
+                    junit 'reports/performance.xml'
+                }
+            }
+        }
+        
+        stage('Integration Tests') {
+            steps {
+                sh 'poetry run pytest tests/integration/ -v --tb=short --junitxml=reports/integration.xml'
+            }
+            post {
+                always {
+                    junit 'reports/integration.xml'
+                }
+            }
+        }
+        
+        stage('Stress Tests') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh 'poetry run pytest tests/stress/ -m "not heavy" -v --tb=short --junitxml=reports/stress.xml'
+            }
+            post {
+                always {
+                    junit 'reports/stress.xml'
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'comprehensive_test_results',
+                reportFiles: '*.html',
+                reportName: 'Comprehensive Test Report'
+            ])
+        }
+    }
+}

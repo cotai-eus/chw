@@ -1,0 +1,40 @@
+name: Comprehensive Testing Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  comprehensive-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.12'
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run API Contract Tests
+      run: poetry run pytest tests/api_docs/ -v
+    
+    - name: Run Security Tests
+      run: poetry run pytest tests/security/ -v
+    
+    - name: Run Performance Regression Tests
+      run: poetry run pytest tests/performance/ -v
+    
+    - name: Run Integration Tests
+      run: poetry run pytest tests/integration/ -v
+    
+    - name: Run Stress Tests (Light)
+      run: poetry run pytest tests/stress/ -m "not heavy" -v

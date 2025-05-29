@@ -71,3 +71,7 @@ class Settings(BaseSettings):
         case_sensitive = True
 
 settings = Settings()
+
+def get_settings() -> Settings:
+    """Get the settings instance."""
+    return settings

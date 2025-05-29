@@ -1,0 +1,50 @@
+{
+  "execution_info": {
+    "timestamp": "2025-05-29 21:40:19",
+    "total_duration": 2.83225154876709,
+    "environment": "local"
+  },
+  "summary": {
+    "total_categories": 1,
+    "passed": 0,
+    "failed": 1,
+    "success_rate": 0.0
+  },
+  "category_results": {
+    "unit": {
+      "success": false,
+      "duration": 2.8313281536102295,
+      "error": "ERROR: usage: pytest [options] [file_or_dir] [file_or_dir] [...]\npytest: error: unrecognized arguments: --timeout=300\n  inifile: /home/user/Escritorio/hw/backend/pyproject.toml\n  rootdir: /home/user/Escritorio/hw/backend\n\n"
+    }
+  },
+  "quality_gates": {
+    "api_contracts": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "security": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "performance": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "chaos": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "stress": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    }
+  },
+  "recommendations": [
+    "Investigate and fix 1 failed test categories"
+  ]
+}

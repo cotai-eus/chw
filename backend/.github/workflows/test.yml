@@ -1,0 +1,370 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  POETRY_VERSION: 1.6.1
+  PYTHON_VERSION: 3.11
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ env.POETRY_VERSION }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run Black
+      run: poetry run black --check .
+    
+    - name: Run isort
+      run: poetry run isort --check-only .
+    
+    - name: Run flake8
+      run: poetry run flake8 .
+    
+    - name: Run mypy
+      run: poetry run mypy app/
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ env.POETRY_VERSION }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run unit tests
+      run: poetry run pytest tests/unit/ -v --cov=app --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unit-tests
+        name: unit-tests
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      mongodb:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: testuser
+          MONGO_INITDB_ROOT_PASSWORD: testpassword
+          MONGO_INITDB_DATABASE: testdb
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ env.POETRY_VERSION }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Wait for services
+      run: |
+        sleep 10
+        # Test database connections
+        poetry run python -c "
+        import asyncio
+        import asyncpg
+        import aioredis
+        import motor.motor_asyncio
+        
+        async def test_connections():
+            # Test PostgreSQL
+            conn = await asyncpg.connect('postgresql://testuser:testpassword@localhost:5432/testdb')
+            await conn.close()
+            print('PostgreSQL connection successful')
+            
+            # Test Redis
+            redis = aioredis.from_url('redis://localhost:6379')
+            await redis.ping()
+            await redis.close()
+            print('Redis connection successful')
+            
+            # Test MongoDB
+            client = motor.motor_asyncio.AsyncIOMotorClient('mongodb://testuser:testpassword@localhost:27017')
+            await client.admin.command('ping')
+            client.close()
+            print('MongoDB connection successful')
+        
+        asyncio.run(test_connections())
+        "
+    
+    - name: Run database migrations
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+      run: poetry run alembic upgrade head
+    
+    - name: Run integration tests
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+        REDIS_URL: redis://localhost:6379
+        MONGODB_URL: mongodb://testuser:testpassword@localhost:27017/testdb
+        SECRET_KEY: test-secret-key-for-ci
+        TESTING: true
+      run: poetry run pytest tests/integration/ -v --cov=app --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: integration-tests
+        name: integration-tests
+
+  performance-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ env.POETRY_VERSION }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run database migrations
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+      run: poetry run alembic upgrade head
+    
+    - name: Run performance tests
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+        REDIS_URL: redis://localhost:6379
+        SECRET_KEY: test-secret-key-for-ci
+        TESTING: true
+      run: poetry run pytest tests/performance/ -v --timeout=300
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-results
+        path: tests/performance/results/
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      mongodb:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: testuser
+          MONGO_INITDB_ROOT_PASSWORD: testpassword
+          MONGO_INITDB_DATABASE: testdb
+        ports:
+          - 27017:27017
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ env.POETRY_VERSION }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: poetry-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run database migrations
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+      run: poetry run alembic upgrade head
+    
+    - name: Run end-to-end tests
+      env:
+        DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/testdb
+        REDIS_URL: redis://localhost:6379
+        MONGODB_URL: mongodb://testuser:testpassword@localhost:27017/testdb
+        SECRET_KEY: test-secret-key-for-ci
+        TESTING: true
+      run: poetry run pytest tests/e2e/ -v --timeout=600
+
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Bandit Security Linter
+      uses: pypa/gh-action-bandit@v1.0.2
+      with:
+        path: "./app"
+        options: "-r"
+    
+    - name: Run Safety Check
+      run: |
+        pip install safety
+        safety check --json
+    
+    - name: Run Semgrep
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/python

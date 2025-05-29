@@ -1,0 +1,50 @@
+{
+  "execution_info": {
+    "timestamp": "2025-05-29 21:20:25",
+    "total_duration": 9.444252252578735,
+    "environment": "local"
+  },
+  "summary": {
+    "total_categories": 1,
+    "passed": 0,
+    "failed": 1,
+    "success_rate": 0.0
+  },
+  "category_results": {
+    "unit": {
+      "success": false,
+      "duration": 9.44287395477295,
+      "error": "ImportError while loading conftest '/home/user/Escritorio/hw/backend/tests/conftest.py'.\ntests/conftest.py:18: in <module>\n    from main import app\nmain.py:15: in <module>\n    from app.core.config import get_settings\nE   ImportError: cannot import name 'get_settings' from 'app.core.config' (/home/user/Escritorio/hw/backend/app/core/config.py)\n"
+    }
+  },
+  "quality_gates": {
+    "api_contracts": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "security": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "performance": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "chaos": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "stress": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    }
+  },
+  "recommendations": [
+    "Investigate and fix 1 failed test categories"
+  ]
+}

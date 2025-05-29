@@ -1,0 +1,50 @@
+{
+  "execution_info": {
+    "timestamp": "2025-05-29 21:19:32",
+    "total_duration": 14.128903150558472,
+    "environment": "local"
+  },
+  "summary": {
+    "total_categories": 1,
+    "passed": 0,
+    "failed": 1,
+    "success_rate": 0.0
+  },
+  "category_results": {
+    "unit": {
+      "success": false,
+      "duration": 14.128424167633057,
+      "error": "ImportError while loading conftest '/home/user/Escritorio/hw/backend/tests/conftest.py'.\ntests/conftest.py:18: in <module>\n    from app.main import app\nE   ModuleNotFoundError: No module named 'app.main'\n"
+    }
+  },
+  "quality_gates": {
+    "api_contracts": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "security": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "performance": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "chaos": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    },
+    "stress": {
+      "passed": false,
+      "criteria_met": false,
+      "details": "Category not executed"
+    }
+  },
+  "recommendations": [
+    "Investigate and fix 1 failed test categories"
+  ]
+}
