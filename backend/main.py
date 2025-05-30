@@ -51,6 +51,8 @@ from app.websockets import (
 # Services
 from app.services.notification_service import NotificationService
 from app.db.session import init_db
+from app.db.migration_manager import initialize_databases
+from app.api.api_v1.api import api_router
 
 # Configure logging
 setup_logging()
@@ -67,9 +69,9 @@ async def lifespan(app: FastAPI):
     logger.info("Starting application...")
     
     try:
-        # Initialize database
-        await init_db()
-        logger.info("Database initialized successfully")
+        # Initialize databases
+        db_status = await initialize_databases()
+        logger.info(f"Database status: {db_status}")
         
         # Initialize notification service
         notification_service = NotificationService()
@@ -105,7 +107,7 @@ def create_application() -> FastAPI:
     
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        description="Enterprise Backend API for Tender Management",
+        description="Sistema de Automação de Licitações com IA",
         version="1.0.0",
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,
@@ -116,11 +118,10 @@ def create_application() -> FastAPI:
     # Configure CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_HOSTS,
+        allow_origins=settings.BACKEND_CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["X-Total-Count", "X-Session-ID"]
     )
     
     # Add security middleware
@@ -185,6 +186,8 @@ def create_application() -> FastAPI:
         tags=["Kanban"]
     )
     
+    app.include_router(api_router, prefix=settings.API_V1_STR)
+    
     # Add WebSocket endpoints
     @app.websocket("/ws/notifications/{token}")
     async def websocket_notifications(websocket, token: str):
@@ -205,21 +208,14 @@ def create_application() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """Health check endpoint."""
+        from app.db.migration_manager import BackendMigrationManager
+        
+        manager = BackendMigrationManager()
+        db_status = await manager.check_migration_status()
+        
         return {
-            "status": "healthy",
-            "service": settings.PROJECT_NAME,
-            "version": "1.0.0"
-        }
-    
-    # Add metrics endpoint
-    @app.get("/metrics")
-    async def metrics():
-        """Basic metrics endpoint."""
-        # In production, integrate with Prometheus or similar
-        return {
-            "active_connections": 0,  # Get from connection managers
-            "total_requests": 0,
-            "error_rate": 0.0
+            "status": "healthy" if all(db_status.values()) else "degraded",
+            "databases": db_status
         }
     
     # Exception handlers

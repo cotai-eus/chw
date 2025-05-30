@@ -21,19 +21,30 @@ class Settings(BaseSettings):
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
-    # MongoDB
-    MONGO_SERVER: str = "localhost"
-    MONGO_USER: str = "mongo"
-    MONGO_PASSWORD: str = "mongo"
-    MONGO_DB: str = "licitacoes_mongo"
-    MONGO_PORT: int = 27017
+    # MongoDB Configuration
+    MONGODB_HOST: str = "localhost"
+    MONGODB_USER: Optional[str] = None
+    MONGODB_PASSWORD: Optional[str] = None
+    MONGODB_DATABASE: str = "tender_platform_flexible"
+    MONGODB_PORT: int = 27017
     
     @property
-    def MONGO_DATABASE_URI(self) -> str:
-        return f"mongodb://{self.MONGO_USER}:{self.MONGO_PASSWORD}@{self.MONGO_SERVER}:{self.MONGO_PORT}/{self.MONGO_DB}"
+    def MONGODB_URI(self) -> str:
+        if self.MONGODB_USER and self.MONGODB_PASSWORD:
+            return f"mongodb://{self.MONGODB_USER}:{self.MONGODB_PASSWORD}@{self.MONGODB_HOST}:{self.MONGODB_PORT}"
+        return f"mongodb://{self.MONGODB_HOST}:{self.MONGODB_PORT}"
     
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379"
+    # Redis Configuration
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_DB: int = 0
+    
+    @property
+    def REDIS_URI(self) -> str:
+        if self.REDIS_PASSWORD:
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
     
     # IA Services
     OLLAMA_API_URL: str = "http://localhost:11434"

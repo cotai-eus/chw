@@ -1,0 +1,42 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    netcat-traditional \
+    wget \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install MongoDB tools
+RUN wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | apt-key add - \
+    && echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    && apt-get update \
+    && apt-get install -y mongodb-mongosh mongodb-database-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    psycopg2-binary \
+    pymongo \
+    redis \
+    python-dotenv \
+    requests
+
+# Set working directory
+WORKDIR /app
+
+# Copy migration scripts and directories
+COPY migrate_standalone.py /app/
+COPY postgresql/ /app/postgresql/
+COPY mongodb/ /app/mongodb/
+COPY migrations/ /app/migrations/
+
+# Create migrations directory if it doesn't exist
+RUN mkdir -p /app/migrations
+
+# Make script executable
+RUN chmod +x /app/migrate_standalone.py
+
+# Default command
+CMD ["python", "migrate_standalone.py"]
